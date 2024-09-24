@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YOLOv8 & Sensor Monitoring</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/raphael/2.3.0/raphael.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/justgage/1.5.1/justgage.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        /* Reset margin dan padding untuk memastikan layout yang presisi */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body, html {
+            height: 100%;
+            overflow: hidden; /* Hindari scroll */
+            font-family: 'Arial', sans-serif; /* Font yang modern dan bersih */
+            background-color: #f4f4f9; /* Warna latar belakang halaman */
+        }
+
+        .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            width: 100%;
+            height: 100vh;
+            padding: 20px;
+            gap: 20px; /* Spasi antara gauge dan webcam */
+            background: #ffffff; /* Warna latar belakang kontainer */
+            border-radius: 8px; /* Sudut kontainer yang melengkung */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Bayangan halus */
+            overflow: hidden; /* Mencegah overflow */
+        }
+
+        .gauge-container, .webcam-container {
+            background: #ffffff; /* Warna latar belakang elemen */
+            padding: 20px;
+            border-radius: 8px; /* Sudut melengkung */
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Bayangan halus */
+        }
+
+        .gauge-container {
+            flex: 1;
+            max-width: 300px; /* Batasi ukuran gauge */
+        }
+
+        .webcam-container {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            max-width: 80%; /* Batasi lebar webcam container */
+            max-height: 75vh; /* Batasi tinggi webcam container */
+        }
+
+        .webcam-container img {
+            width: 60%; /* Lebar gambar mengikuti lebar container */
+            height: auto; /* Tinggi gambar menyesuaikan proporsi */
+            border-radius: 8px; /* Sudut melengkung gambar */
+            object-fit: contain; /* Pastikan gambar tidak terpotong */
+        }
+
+        h1 {
+            text-align: center;
+            color: #333; /* Warna teks judul */
+            padding: 20px;
+            background: #007bff; /* Warna latar belakang judul */
+            color: white; /* Warna teks judul */
+            border-radius: 8px; /* Sudut melengkung */
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Bayangan halus */
+        }
+
+        h2 {
+            color: #007bff; /* Warna teks heading */
+            margin-bottom: 10px; /* Spasi bawah heading */
+        }
+
+        h3 {
+            color: #555; /* Warna teks nilai sensor */
+        }
+
+        /* Responsif: Sesuaikan tampilan vertikal di layar kecil */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                align-items: center;
+                justify-content: flex-start;
+                height: 100vh;
+            }
+
+            .webcam-container img {
+                max-width: 90%; /* Sesuaikan ukuran webcam di perangkat kecil */
+                max-height: 40vh; /* Batasi tinggi webcam di perangkat kecil */
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Automated Rice Disease Detection and Soil Monitoring</h1>
+    
+    <div class="container">
+        <!-- Bagian gauge -->
+        <div class="gauge-container">
+            <h2>Soil Moisture Percentage Levels:</h2>
+            <div id="gauge" style="width:300px; height:150px;"></div> <!-- Div untuk JustGage -->
+            <h3 id="sensorValue">0%</h3> <!-- Menampilkan nilai persentase -->
+        </div>
+        
+        <!-- Bagian webcam -->
+        <div class="webcam-container">
+            <h2>Live YOLOv8 Webcam Stream</h2>
+            <img src="{{ url_for('video_feed') }}" alt="Live YOLOv8 Stream">
+        </div>
+    </div>
+
+    <script>
+        // Inisialisasi JustGage
+        var g = new JustGage({
+            id: "gauge",
+            value: 0,
+            min: 0,
+            max: 100,
+            title: "Kelembapan",
+            label: "persentase",
+            gaugeWidthScale: 0.2,
+            counter: true,
+            relativeGaugeSize: true,
+            donut: false,
+            levelColors: ["#00ff00", "#ffdd00", "#ff0000"],
+            pointer: true
+        });
+
+        // Fungsi untuk memperbarui nilai gauge
+        function updateGauge(value) {
+            g.refresh(value); // Perbarui nilai kelembapan dengan JustGage
+            document.getElementById('sensorValue').innerText = value + "%"; // Perbarui teks persentase
+        }
+
+        // Polling data kelembapan tanah setiap 5 detik
+        setInterval(function(){
+            fetch('/get-sensor-data')
+            .then(response => response.json())
+            .then(data => {
+                if (data.sensor_data) {
+                    let kelembapan = parseInt(data.sensor_data, 10);
+                    updateGauge(kelembapan); // Perbarui gauge dengan nilai baru
+                } else {
+                    updateGauge(0); // Jika tidak ada data, atur ke 0
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching sensor data:', error);
+                updateGauge(0); // Jika terjadi kesalahan, atur ke 0
+            });
+        }, 5000); // Refresh setiap 5 detik
+    </script>
+</body>
+</html>

@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YOLOv8 & Sensor Monitoring</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/raphael/2.3.0/raphael.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/justgage/1.5.1/justgage.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        /* Styles tetap sama seperti sebelumnya */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body, html {
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f9;
+        }
+
+        .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            width: 100%;
+            height: 100vh;
+            padding: 20px;
+            gap: 20px;
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .gauge-container, .webcam-container {
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .gauge-container {
+            flex: 1;
+            max-width: 300px;
+        }
+
+        .webcam-container {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            max-width: 80%;
+            max-height: 75vh;
+        }
+
+        .webcam-container img {
+            width: 60%;
+            height: auto;
+            border-radius: 8px;
+            object-fit: contain;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            padding: 20px;
+            background: #007bff;
+            color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            color: #007bff;
+            margin-bottom: 10px;
+        }
+
+        h3 {
+            color: #555;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                align-items: center;
+                justify-content: flex-start;
+                height: 100vh;
+            }
+
+            .webcam-container img {
+                max-width: 90%;
+                max-height: 40vh;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Automated Rice Disease Detection and Soil Monitoring</h1>
+    
+    <div class="container">
+        <!-- Bagian gauge untuk Sensor 1 -->
+        <div class="gauge-container">
+            <h2>Soil Moisture Sensor 1:</h2>
+            <div id="gauge1" style="width:300px; height:150px;"></div>
+            <h3 id="sensorValue1">0%</h3>
+            <div id="isWatering1" style="color: red; font-weight: bold;">Baris 1 sedang tidak menyiram</div>
+        </div>
+        
+        <!-- Bagian gauge untuk Sensor 2 -->
+        <div class="gauge-container">
+            <h2>Soil Moisture Sensor 2:</h2>
+            <div id="gauge2" style="width:300px; height:150px;"></div>
+            <h3 id="sensorValue2">0%</h3>
+            <div id="isWatering2" style="color: red; font-weight: bold;">Baris 2 sedang tidak menyiram</div>
+        </div>
+        
+        <!-- Bagian webcam -->
+        <div class="webcam-container">
+            <h2>Disease Detection</h2>
+            <img src="{{ url_for('video_feed') }}" alt="Live YOLOv8 Stream">
+        </div>
+    </div>
+
+    <script>
+        // Inisialisasi JustGage untuk Sensor 1
+        var gauge1 = new JustGage({
+            id: "gauge1",
+            value: 0,
+            min: 0,
+            max: 100,
+            title: "Kelembapan",
+            label: "Percentage",
+            gaugeWidthScale: 0.3,
+            counter: true,
+            relativeGaugeSize: true,
+            donut: false,
+            levelColors: ["#00ff00", "#ffdd00", "#ff0000"],  // Warna berdasarkan level
+            pointer: true
+        });
+
+        // Inisialisasi JustGage untuk Sensor 2
+        var gauge2 = new JustGage({
+            id: "gauge2",
+            value: 0,
+            min: 0,
+            max: 100,
+            title: "Kelembapan",
+            label: "Percentage",
+            gaugeWidthScale: 0.3,
+            counter: true,
+            relativeGaugeSize: true,
+            donut: false,
+            levelColors: ["#00ff00", "#ffdd00", "#ff0000"],  // Warna berdasarkan level
+            pointer: true
+        });
+
+        // Fungsi untuk memperbarui nilai gauge
+        function updateGauge(sensor1, sensor2, isWatering1, isWatering2) {
+            gauge1.refresh(sensor1); // Perbarui gauge 1 dengan nilai sensor 1
+            document.getElementById('sensorValue1').innerText = sensor1 + "%";
+
+            gauge2.refresh(sensor2); // Perbarui gauge 2 dengan nilai sensor 2
+            document.getElementById('sensorValue2').innerText = sensor2 + "%";
+            // Perbarui status penyiraman untuk baris 1
+            if (isWatering1 === "true") {
+                document.getElementById('isWatering1').innerText = "Baris 1 sedang menyiram";
+                document.getElementById('isWatering1').style.color = "green";
+            } else {
+                document.getElementById('isWatering1').innerText = "Baris 1 tidak menyiram";
+                document.getElementById('isWatering1').style.color = "red";
+            }
+    
+            // Perbarui status penyiraman untuk baris 2
+            if (isWatering2 === "true") {
+                document.getElementById('isWatering2').innerText = "Baris 2 sedang menyiram";
+                document.getElementById('isWatering2').style.color = "green";
+            } else {
+                document.getElementById('isWatering2').innerText = "Baris 2 tidak menyiram";
+                document.getElementById('isWatering2').style.color = "red";
+            }
+        }
+
+        // Polling data kelembapan tanah setiap 5 detik
+        setInterval(function(){
+            fetch('/get-sensor-data')
+            .then(response => response.json())
+            .then(data => {
+                if (data.sensor1 && data.sensor2) {
+                    let kelembapan1 = parseInt(data.sensor1, 10);
+                    let kelembapan2 = parseInt(data.sensor2, 10);
+                    let isWatering1 = data.isWatering1;
+                    let isWatering2 = data.isWatering2;
+                    updateGauge(kelembapan1, kelembapan2, isWatering1, isWatering2); // Perbarui gauge dan status penyiraman
+                } else {
+                    updateGauge(0, 0, "false", "false"); // Jika tidak ada data, atur ke 0
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching sensor data:', error);
+                updateGauge(0, 0, "false", "false"); // Jika terjadi kesalahan, atur ke 0
+            });
+        }, 5000); // Refresh setiap 5 detik
+    </script>
+</body>
+</html>
